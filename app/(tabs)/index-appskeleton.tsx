@@ -3,6 +3,7 @@ import { StyleSheet, View, TextInput, Text, Pressable, Alert, ScrollView, Status
 import NetInfo from '@react-native-community/netinfo'; // Import NetInfo
 import { PermissionsAndroid } from 'react-native'; // For permission handling on Android
 import Geolocation from 'react-native-geolocation-service'; // Import Geolocation for location fetching
+import axios from 'axios'; // Import Axios for HTTP requests
 
 const App = () => {
   const [messages, setMessages] = useState([]);
@@ -64,22 +65,66 @@ const App = () => {
     }
   };
 
-  // Fetch the user's current location
+  // Fetch the user's current location and use OpenCage to reverse geocode
   const fetchLocation = () => {
+    console.log("Fetching location...");
+
     Geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        console.log(`Location fetched: Latitude: ${latitude}, Longitude: ${longitude}`); // Log fetched location
+
         setLocation({ latitude, longitude });
+
+        // Reverse geocode using OpenCage API
+        fetchAddress(latitude, longitude);
+
         const locationMessage = `Location: Latitude: ${latitude}, Longitude: ${longitude}`;
         setMessages((prevMessages) => [...prevMessages, locationMessage]); // Add location to messages
         Alert.alert('Location', locationMessage); // Show an alert with the location
       },
       (error) => {
-        console.log(error);
-        Alert.alert('Error', 'Unable to fetch location');
+        console.log("Location fetch error:", error); // Log the error for debugging
+        if (error.code === 1) {
+          // PERMISSION_DENIED
+          Alert.alert('Error', 'Location permission denied. Please enable location access.');
+        } else if (error.code === 2) {
+          // POSITION_UNAVAILABLE
+          Alert.alert('Error', 'Location unavailable. Please ensure your GPS is enabled.');
+        } else {
+          Alert.alert('Error', `Unable to fetch location: ${error.message}`);
+        }
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      {
+        enableHighAccuracy: true,
+        timeout: 30000, // Increased timeout for fetching location
+        maximumAge: 10000,
+      }
     );
+  };
+
+  // Function to fetch the address from OpenCage API
+  const fetchAddress = (latitude, longitude) => {
+    const apiKey = 'c8ff929c62bc421497d843a18b27c5ec'; // Your OpenCage API key
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${apiKey}`;
+
+    axios
+      .get(url)
+      .then((response) => {
+        const results = response.data.results;
+        if (results.length > 0) {
+          const address = results[0].formatted;
+          console.log("Address fetched:", address);
+          setMessages((prevMessages) => [...prevMessages, `Address: ${address}`]); // Add address to messages
+          Alert.alert('Address', address); // Show an alert with the address
+        } else {
+          Alert.alert('Error', 'Unable to fetch address.');
+        }
+      })
+      .catch((error) => {
+        console.log("Error fetching address:", error);
+        Alert.alert('Error', 'Unable to fetch address from OpenCage API.');
+      });
   };
 
   // Send a message function
@@ -88,11 +133,6 @@ const App = () => {
       setMessages((prevMessages) => [...prevMessages, message]);
       setMessage('');
     }
-  };
-
-  // Function to handle sending an image (placeholder)
-  const handleSendImage = () => {
-    Alert.alert('Send Image', 'Sending an image...');
   };
 
   // Auto-scroll to the bottom when new messages are added
@@ -142,7 +182,7 @@ const App = () => {
         <Pressable style={styles.toolbarButton} onPress={handleSendMessage}>
           <Text style={styles.toolbarButtonText}>Send</Text>
         </Pressable>
-        <Pressable style={styles.toolbarButton} onPress={handleSendImage}>
+        <Pressable style={styles.toolbarButton} onPress={() => Alert.alert('Send Image', 'Sending an image...')}>
           <Text style={styles.toolbarButtonText}>Image</Text>
         </Pressable>
         <Pressable style={styles.toolbarButton} onPress={getCurrentLocation}>
