@@ -1,0 +1,196 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  StyleSheet, 
+  View, 
+  TextInput, 
+  Text, 
+  Pressable, 
+  ScrollView, 
+  StatusBar, 
+  ImageBackground, 
+  Animated,
+} from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import Icon from 'react-native-vector-icons/MaterialIcons'; // Assuming you use this for icons
+
+const App = () => {
+  const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState('');
+  const [isConnected, setIsConnected] = useState(true);
+  const scrollViewRef = useRef();
+
+  const [statusBarColor] = useState(new Animated.Value(0));
+
+  // Monitor network connectivity status
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(state.isConnected);
+      Animated.timing(statusBarColor, {
+        toValue: state.isConnected ? 1 : 0,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Function to handle sending a message
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      const newMessage = {
+        text: message,
+        key: Math.random().toString(),
+      };
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      setMessage('');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Status Bar with Animation */}
+      <Animated.View
+        style={[
+          styles.statusBar,
+          {
+            backgroundColor: statusBarColor.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['#D32F2F', '#388E3C'], // Red for disconnected, Green for connected
+            }),
+          },
+        ]}
+      >
+        <StatusBar barStyle="light-content" />
+      </Animated.View>
+
+      {/* Background and Scrollable Messages */}
+      <ImageBackground
+        source={{
+          uri: 'https://tasbihdigital.com/wp-content/uploads/2022/10/Anime-Aesthetic-Cell-Phone-Wallpaper.jpg',
+        }}
+        style={styles.contentBackground}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messageContainer}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {messages.map((msg) => (
+            <AnimatedMessage key={msg.key} message={msg.text} />
+          ))}
+        </ScrollView>
+      </ImageBackground>
+
+      {/* Message Input Area */}
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.inputMethodEditor}
+          placeholder="Type a message..."
+          placeholderTextColor="#B0BEC5"
+          value={message}
+          onChangeText={(text) => setMessage(text)}
+        />
+        <Pressable style={styles.sendButton} onPress={handleSendMessage}>
+          <Icon name="send" size={28} color="#fff" />
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+const AnimatedMessage = ({ message }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+
+    return () => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    };
+  }, []);
+
+  return (
+    <Animated.View style={[styles.message, { opacity: fadeAnim }]}>
+      <Text style={styles.messageText}>{message}</Text>
+    </Animated.View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#ECEFF1',
+  },
+  statusBar: {
+    height: StatusBar.currentHeight,
+    width: '100%',
+  },
+  contentBackground: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 15,
+  },
+  messageContainer: {
+    flex: 1,
+    paddingTop: 10,
+    paddingBottom: 80,
+  },
+  scrollContent: {
+    flexDirection: 'column-reverse',
+  },
+  message: {
+    backgroundColor: '#263238', 
+    padding: 15,
+    marginBottom: 15,
+    width: '80%',
+    alignSelf: 'flex-start',
+    borderWidth: 2,
+    borderColor: '#455A64', // Darker border for the angular feel
+    elevation: 3,
+    borderRadius: 5, // Angular edges
+  },
+  messageText: {
+    fontSize: 16,
+    color: '#fff',
+    fontFamily: 'Roboto',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#B0BEC5',
+    backgroundColor: '#37474F',
+    alignItems: 'center',
+  },
+  inputMethodEditor: {
+    flex: 1,
+    backgroundColor: '#455A64',
+    padding: 12,
+    borderWidth: 2,
+    borderColor: '#B0BEC5',
+    fontSize: 16,
+    marginRight: 10,
+    color: '#fff',
+    borderRadius: 5, // Angular edges for the input field
+  },
+  sendButton: {
+    backgroundColor: '#388E3C',
+    padding: 15,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 5, // Square button with sharp corners
+  },
+});
+
+export default App;
